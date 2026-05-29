@@ -1,4 +1,4 @@
-use axum::{extract::State, routing::get, Router};
+use axum::{extract::State, http::StatusCode, routing::get, Router};
 use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 use std::net::SocketAddr;
 
@@ -30,9 +30,14 @@ async fn main() {
         .expect("failed to start axum server");
 }
 
-async fn health(State(state): State<AppState>) -> &'static str {
-    let _ = state.db.is_closed();
-    "ok"
+async fn health(State(state): State<AppState>) -> StatusCode {
+    match sqlx::query_scalar::<_, i64>("SELECT 1")
+        .fetch_one(&state.db)
+        .await
+    {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+    }
 }
 
 async fn auth_placeholder() -> &'static str {
